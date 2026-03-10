@@ -82,7 +82,7 @@ void handleSentEvent()
     u8 txByte;
 
     // Get byte from transmit queue
-    if (xQueueReceiveFromISR(
+    while (xQueueReceiveFromISR(
             xTxQueue,
             &txByte,
             &xHigherPriorityTaskWoken
