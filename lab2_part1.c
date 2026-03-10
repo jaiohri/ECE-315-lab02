@@ -100,8 +100,8 @@ void sha256_string(const char* input, BYTE output[32]);
 // ======================================================
 // UART helpers
 // ======================================================
-uint8_t receive_byte(uint8_t *out_byte);
-void receive_string(char *buf, size_t buf_len);
+uint8_t receive_byte(uint8_t *received_byte);
+void receive_string(char *buffer, size_t buffer_length);
 static void uart_init(void);
 static int uart_poll_rx(uint8_t *b);
 static void uart_tx_byte(uint8_t b);
@@ -206,11 +206,11 @@ static void UART_RX_Task(void *pvParameters)
 static void UART_TX_Task(void *pvParameters)
 {
 
-  char c;
+  char character;
 
   for (;;){
-    if (xQueueReceive(q_tx, &c, portMAX_DELAY) == pdTRUE){
-      uart_tx_byte((uint8_t)c);
+    if (xQueueReceive(q_tx, &character, portMAX_DELAY) == pdTRUE){
+      uart_tx_byte((uint8_t)character);
     }
     vTaskDelay(pdMS_TO_TICKS(POLL_DELAY_MS));
   }
@@ -330,42 +330,39 @@ static void Crypto_Task(void *pvParameters)
 }
 
 
-uint8_t receive_byte(uint8_t *out_byte)
+uint8_t receive_byte(uint8_t *received_byte)
 {
     while(1){
-        if (xQueueReceive(q_rx_byte, out_byte, 0)!=pdTRUE){            
+        if (xQueueReceive(q_rx_byte, received_byte, 0)!=pdTRUE){            
             vTaskDelay(pdMS_TO_TICKS(POLL_DELAY_MS));
         } else {
-            return *out_byte;
+            return *received_byte;
         }
     }
 }
 
 
-void receive_string(char *buf, size_t buf_len)
+void receive_string(char *buffer, size_t buffer_length)
 {
-    uint8_t recvd;
-    size_t idx = 0;
-    buf[0] = '\0';
+    uint8_t received_byte;
+    size_t buffer_index = 0;
+    buffer[0] = '\0';
 
     while (1){
 
-        if (xQueueReceive(q_rx_byte, &recvd, 0) == pdTRUE){
+        if (xQueueReceive(q_rx_byte, &received_byte, 0) == pdTRUE){
 
-            if (recvd == '\r'){     // Enter pressed
-                buf[idx] = '\0';
+            if (received_byte == '\r'){     // Enter pressed
+                buffer[buffer_index] = '\0';
                 print_string("\n");
                 return;
             }
 
-            if (idx < buf_len - 1){
-                buf[idx++] = recvd;
-                buf[idx] = '\0';
+            if (buffer_index < buffer_length - 1){
+                buffer[buffer_index++] = received_byte;
+                buffer[buffer_index] = '\0';
 
-                // char echo[2];
-                // echo[0] = recvd;
-                // echo[1] = '\0';
-                // print_string(echo);
+
             }
         }
 
@@ -381,12 +378,12 @@ void flush_uart(void)
 }
 
 
-void print_string(const char *str)
+void print_string(const char *message)
 {
 
-    while (*str){
-        char c = *str++;
-        xQueueSend(q_tx, &c, portMAX_DELAY);
+    while (*message){
+        char character = *message++;
+        xQueueSend(q_tx, &character, portMAX_DELAY);
     }
 
 }
