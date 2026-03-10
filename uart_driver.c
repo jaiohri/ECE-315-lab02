@@ -81,12 +81,14 @@ void handleSentEvent()
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     u8 txByte;
 
+    // Get byte from transmit queue
     if (xQueueReceiveFromISR(
             xTxQueue,
             &txByte,
             &xHigherPriorityTaskWoken
         ) == pdPASS)
     {
+        // Write to FIFO if not full
         if (!(XUartPs_ReadReg(
                 UART.Config.BaseAddress,
                 XUARTPS_SR_OFFSET
@@ -137,10 +139,10 @@ BaseType_t myTransmitFull(void)
 // ADDED FOR PART3
 void mySendByte(u8 data)
 {
-    BaseType_t empty =
-        (uxQueueMessagesWaiting(xTxQueue) == 0);
+    BaseType_t tx_queue_empty = (uxQueueMessagesWaiting(xTxQueue) == 0);
 
-    if (empty){
+    if (tx_queue_empty){
+        // Queue is empty, write directly to FIFO
         XUartPs_WriteReg(
             UART.Config.BaseAddress,
             XUARTPS_FIFO_OFFSET,
@@ -148,6 +150,7 @@ void mySendByte(u8 data)
         );
     }
     else{
+        // Queue has data, add to queue and enable interrupt
         xQueueSend(
             xTxQueue,
             &data,
@@ -161,29 +164,26 @@ void mySendByte(u8 data)
 // ADDED FOR PART3
 u8 myReceiveByte(void)
 {
-    u8 recv = 0;
+    u8 received_byte = 0;
 
     if (myReceiveData()){
         xQueueReceive(
             xRxQueue,
-            (void*)&recv,
+            (void*)&received_byte,
             portMAX_DELAY
         );
 
-        byteCount++;   // ← ADD THIS LINE
+        byteCount++;
     }
 
-    return recv;
+    return received_byte;
 }
 
 // ADDED FOR PART3
-void mySendString(const char* str)
+void mySendString(const char* string)
 {
-    int i = 0;
-
-    while (str[i] != '\0'){
-        mySendByte((u8)str[i]);
-        i++;
+    for (int index = 0; string[index] != '\0'; index++){
+        mySendByte((u8)string[index]);
     }
 }
 
